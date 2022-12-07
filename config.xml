@@ -50,6 +50,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <data android:mimeType="text/*"/>
                 <data android:mimeType="xml/*" />
+                <data android:mimeType="application/json" />
+                <data android:mimeType="application/javascript" />
             </intent-filter>
         </config-file>
 
