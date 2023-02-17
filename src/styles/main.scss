@@ -1,3 +1,4 @@
+// @import './fonts.scss';
 @import './searchBar.scss';
 @import './hints.scss';
 @import './fileInfo.scss';
@@ -25,6 +26,7 @@ html,
 body {
   width: 100%;
   height: 100%;
+  font-size: 14px;
 }
 
 body {
@@ -318,6 +320,13 @@ a.icon {
   &.no-icon {
     max-width: 10px;
   }
+
+  &.letters::before {
+    content: attr(data-letters);
+    text-transform: uppercase;
+    font-size: 0.38em;
+    font-weight: bolder;
+  }
 }
 
 .mask {
@@ -515,6 +524,11 @@ textarea {
   &[data-size='30'] {
     width: 30px;
     height: 30px;
+  }
+
+  &[data-size='20'] {
+    width: 20px;
+    height: 20px;
   }
 
   &.end {
@@ -718,6 +732,8 @@ button {
   top: 10px;
   right: 10px;
   z-index: 1;
+  height: 40px;
+  width: 40px;
 }
 
 #sidebar-toggler {
@@ -725,6 +741,8 @@ button {
   top: 10px;
   left: 10px;
   z-index: 1;
+  height: 40px;
+  width: 40px;
 }
 
 #quicktool-toggler {
@@ -766,6 +784,12 @@ button {
 
 .sake {
   animation: sake 3s ease-out infinite;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .w-resize {

@@ -6,11 +6,30 @@ import $_row1 from '../views/footer/row1.hbs';
 import $_row2 from '../views/footer/row2.hbs';
 import searchSettings from '../settings/searchSettings';
 import constants from '../lib/constants';
+import appSettings from '../lib/settings';
+
+/**@type {HTMLElement} */
+const $quickToolToggler = <span
+  onclick={() => actions('toggle-quick-tools')}
+  className='floating icon keyboard_arrow_up'
+  id='quicktool-toggler'></span>;
+/**@type {HTMLElement} */
+const $footer = <footer id='quick-tools' tabIndex={-1}></footer>;
 
 const $row1 = tag.parse($_row1);
 const $row2 = tag.parse($_row2);
+const $save = $row1.get('[action=save]');
+/**@type {HTMLElement} */
 let $searchRow1;
+/**@type {HTMLElement} */
 let $searchRow2;
+
+export {
+  actions,
+  $quickToolToggler,
+  $footer,
+  $save,
+};
 
 /**
  * Performs quick actions
@@ -19,7 +38,6 @@ let $searchRow2;
  */
 function actions(action, value) {
   const { editor, activeFile } = editorManager;
-  const $footer = root.get('#quick-tools');
   const $shiftKey = $footer.get('#shift-key');
   const $textarea = editor.textInput.getElement();
   let $searchInput = $footer.get('#searchInput');
@@ -48,6 +66,7 @@ function actions(action, value) {
     case 'key':
       editor.insert(value);
       break;
+
     case 'pallete':
       acode.exec('command-pallete');
       break;
@@ -98,20 +117,6 @@ function actions(action, value) {
       acode.exec('save');
       break;
 
-    case 'more':
-      if (!$row2.isConnected) {
-        if ($searchRow1.isConnected) {
-          removeSearch();
-        }
-        moreIconDown();
-        $footer.appendChild($row2);
-        incFooterHeightBy(1);
-      } else {
-        removeRow2();
-      }
-      editor.resize(true);
-      break;
-
     case 'moveline-up':
       editor.moveLinesUp();
       break;
@@ -153,19 +158,19 @@ function actions(action, value) {
       toggleQuickTools();
       break;
 
-    case 'enable-quick-tools':
-      enableQuickTools();
+    case 'set-quick-tools-height':
+      setQuickToolsHeight(value);
       break;
 
-    case 'diable-quick-tools':
-      disableQuickTools();
+    default:
       break;
   }
 
   function toggleSearch() {
-    if (!$searchRow1.isConnected) {
-      if ($row2.isConnected) {
-        removeRow2();
+    if (!$footer.contains($searchRow1)) {
+      if ($footer.contains($row2)) {
+        $row2.remove();
+        incFooterHeightBy(-1);
       }
       $footer.append($searchRow1, $searchRow2);
       if (!$searchInput) $searchInput = $footer.querySelector('#searchInput');
@@ -180,96 +185,67 @@ function actions(action, value) {
       actionStack.push({
         id: 'search-bar',
         action: () => {
-          actions('search');
+          removeSearch();
         },
       });
     } else {
+      const inputValue = $searchInput?.value || '';
+      const copyValue = editor.getCopyText();
+      if (inputValue !== copyValue) {
+        $searchInput.value = copyValue;
+        $searchInput.focus();
+        find(false, false);
+        return;
+      }
+
       removeSearch();
     }
     editor.resize(true);
   }
 
   function toggleQuickTools() {
-    appSettings.value.quickTools = !appSettings.value.quickTools;
-    appSettings.update(false);
-
-    if (appSettings.value.quickTools) {
-      enableQuickTools();
+    if (!$footer.contains($row1)) {
+      setQuickToolsHeight();
+    } else if (!$footer.contains($row2)) {
+      setQuickToolsHeight(2);
     } else {
-      disableQuickTools();
+      setQuickToolsHeight(0);
     }
   }
 
-  function enableQuickTools() {
-    if (root.hasAttribute('quicktools')) return; //Quicktools is already enabled
-    let quickToolsState = parseInt(localStorage.quickToolsState) || 1;
-    if (quickToolsState === 1) {
-      $footer.append($row1);
-    } else {
-      quickToolsState = 2;
-      $footer.append($row1, $row2);
-      moreIconDown();
-    }
-
-    if (localStorage.quickToolRow1ScrollLeft) {
-      $row1.scrollLeft = parseInt(localStorage.quickToolRow1ScrollLeft);
-    }
-
-    if (localStorage.quickToolRow2ScrollLeft) {
-      $row2.scrollLeft = parseInt(localStorage.quickToolRow2ScrollLeft);
-    }
-
-    root.setAttribute('quicktools', 'enabled');
-    incFooterHeightBy(quickToolsState);
-    if (editorManager.activeFile && editorManager.activeFile.isUnsaved) {
-      $row1.querySelector("[action='save']").classList.add('notice');
-    }
+  function setQuickToolsHeight(height = 1) {
+    removeSearch();
+    setFooterHeight(height);
+    appSettings.update({ quickTools: height }, false);
     editor.resize(true);
-  }
 
-  function disableQuickTools() {
-    const height = root.getAttribute('footer-height');
-    localStorage.quickToolsState = height;
-    if ($row1.isConnected) {
-      localStorage.quickToolRow1ScrollLeft = $row1.scrollLeft;
+    if (!height) {
       $row1.remove();
-      incFooterHeightBy(-1);
-    }
-    if ($row2.isConnected) {
-      localStorage.quickToolRow2ScrollLeft = $row2.scrollLeft;
       $row2.remove();
-      incFooterHeightBy(-1);
-    }
-    if ($searchRow1.isConnected) {
-      removeSearch();
+      return;
     }
 
-    root.removeAttribute('quicktools');
-    editor.resize(true);
-  }
+    if (height >= 1) {
+      $row1.style.scrollBehavior = 'unset';
+      $footer.append($row1);
+      $row1.scrollLeft = parseInt(localStorage.quickToolRow1ScrollLeft, 10);
+      --height;
+    }
 
-  function removeRow2() {
-    $footer.removeChild($row2);
-    incFooterHeightBy(-1);
-    moreIconUp();
-  }
-
-  function moreIconUp() {
-    $footer
-      .get('[action=more]')
-      .classList.replace('arrow_drop_down', 'arrow_drop_up');
-  }
-  function moreIconDown() {
-    $footer
-      .get('[action=more]')
-      .classList.replace('arrow_drop_up', 'arrow_drop_down');
+    if (height >= 1) {
+      $row2.style.scrollBehavior = 'unset';
+      $footer.append($row2);
+      $row2.scrollLeft = parseInt(localStorage.quickToolRow2ScrollLeft, 10);
+      --height;
+    }
   }
 
   function removeSearch() {
+    if (!$footer.contains($searchRow1)) return;
     actionStack.remove('search-bar');
     $footer.removeAttribute('data-searching');
-    $footer.removeChild($searchRow1);
-    $footer.removeChild($searchRow2);
+    $searchRow1.remove();
+    $searchRow2.remove();
     incFooterHeightBy(-2);
     const { editor, activeFile } = editorManager;
     if (activeFile.focused) {
@@ -281,11 +257,8 @@ function actions(action, value) {
     const searchSettings = appSettings.value.search;
     editor.find($searchInput.value, {
       skipCurrent: skip,
+      ...searchSettings,
       backwards: backward,
-      caseSensitive: searchSettings.caseSensitive,
-      wrap: searchSettings.wrap,
-      wholeWord: searchSettings.wholeWord,
-      regExp: searchSettings.regExp,
     });
 
     updateStatus();
@@ -320,32 +293,21 @@ function actions(action, value) {
   }
 }
 
-/**
- *
- * @param {TouchEvent | MouseEvent} e
- */
-function clickListener(e) {
-  if (!e.target) return;
-
-  const el = e.target;
-  const action = el.getAttribute('action');
-  const value = el.getAttribute('value');
-
-  if (!action) return;
-
-  e.preventDefault();
-  actions(action, value);
-}
-
 function incFooterHeightBy(factor) {
   const footerHeight = parseInt(root.getAttribute('footer-height')) || 0;
   const height = footerHeight + factor;
-  if (height) root.setAttribute('footer-height', height);
-  else root.removeAttribute('footer-height');
+  setFooterHeight(height);
 }
 
-export default {
-  actions,
-  clickListener,
-  incFooterHeightBy,
-};
+function setFooterHeight(height) {
+  if (height) root.setAttribute('footer-height', height);
+  else root.removeAttribute('footer-height');
+
+  if (height > 1 && !$footer.contains($searchRow1)) {
+    $quickToolToggler.classList.remove('keyboard_arrow_up');
+    $quickToolToggler.classList.add('keyboard_arrow_down');
+  } else {
+    $quickToolToggler.classList.remove('keyboard_arrow_down');
+    $quickToolToggler.classList.add('keyboard_arrow_up');
+  }
+}

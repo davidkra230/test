@@ -1,11 +1,12 @@
 import list from '../components/collapsableList';
-import tag from 'html-tag-js';
 import helpers from '../utils/helpers';
-import constants from './constants';
 import openFolder from './openFolder';
 import ScrollBar from '../components/scrollbar/scrollbar';
 import Commands from '../ace/commands';
 import touchListeners from '../ace/touchHandler';
+import appSettings from './settings';
+import EditorFile from './editorFile';
+import { $quickToolToggler } from '../handlers/quickTools';
 
 //TODO: Add option to work multiple files at same time in large display.
 
@@ -40,7 +41,7 @@ async function EditorManager($sidebar, $header, $body) {
       events[event].forEach((fn) => fn(...args));
     }
   };
-  const $container = tag('div', { className: 'editor-container' });
+  const $container = <div className='editor-container'></div>;
   const editor = ace.edit($container);
   const $vScrollbar = ScrollBar({
     width: scrollbarSize,
@@ -56,23 +57,23 @@ async function EditorManager($sidebar, $header, $body) {
     placement: 'bottom',
   });
   const manager = {
+    files: [],
+    onupdate: () => { },
+    activeFile: null,
+    addFile,
     editor,
     getFile,
     switchFile,
-    activeFile: null,
-    onupdate: () => { },
     hasUnsavedFiles,
-    files: [],
-    setSubText,
     moveOpenFileList,
     header: $header,
     sidebar: $sidebar,
     container: $container,
-    get TIMEOUT_VALUE() {
-      return TIMEOUT_VALUE;
-    },
     get openFileList() {
       return $openFileList;
+    },
+    get TIMEOUT_VALUE() {
+      return TIMEOUT_VALUE;
     },
     on(event, callback) {
       if (!events[event]) return;
@@ -175,7 +176,38 @@ async function EditorManager($sidebar, $header, $body) {
     editor.container.style.lineHeight = value;
   });
 
+  appSettings.on('update:relativeLineNumbers', function (value) {
+    editor.setOption('relativeLineNumbers', value);
+  });
+
+  appSettings.on('update:elasticTabstops', function (value) {
+    editor.setOption('useElasticTabstops', value);
+  });
+
+  appSettings.on('update:rtlText', function (value) {
+    editor.setOption('rtlText', value);
+  });
+
+  appSettings.on('update:hardWrap', function (value) {
+    editor.setOption('hardWrap', value);
+  });
+
+  appSettings.on('update:printMargin', function (value) {
+    editor.setOption('printMarginColumn', value);
+  });
+
   return manager;
+
+  /**
+   * 
+   * @param {EditorFile} file 
+   */
+  function addFile(file) {
+    if (manager.files.includes(file)) return;
+    manager.files.push(file);
+    $openFileList.append(file.tab);
+    $header.text = file.name;
+  }
 
   async function setupEditor() {
     let checkTimeout = null;
@@ -189,6 +221,8 @@ async function EditorManager($sidebar, $header, $body) {
       activeFile.focused = true;
       $hScrollbar.hide();
       $vScrollbar.hide();
+      // scroll active line into middle of screen
+      editor.renderer.scrollCursorIntoView();
     });
 
     editor.on('change', function (e) {
@@ -236,19 +270,26 @@ async function EditorManager($sidebar, $header, $body) {
       e.preventDefault();
     };
 
-    editor.setOptions({
-      animatedScroll: false,
-      tooltipFollowsMouse: false,
-      theme: settings.editorTheme,
-      showGutter: settings.linenumbers,
-      showLineNumbers: settings.linenumbers,
-      enableEmmet: true,
-      showInvisibles: settings.showSpaces,
-      indentedSoftWrap: false,
-      scrollPastEnd: 0.5,
-      showPrintMargin: settings.showPrintMargin,
-      enableLiveAutocompletion: settings.liveAutoCompletion,
-    });
+    ace.require('ace/ext/language_tools');
+    editor.setOption('animatedScroll', false);
+    editor.setOption('tooltipFollowsMouse', false);
+    editor.setOption('theme', settings.editorTheme);
+    editor.setOption('showGutter', settings.linenumbers);
+    editor.setOption('showLineNumbers', settings.linenumbers);
+    editor.setOption('enableEmmet', true);
+    editor.setOption('showInvisibles', settings.showSpaces);
+    editor.setOption('indentedSoftWrap', false);
+    editor.setOption('scrollPastEnd', 0.5);
+    editor.setOption('showPrintMargin', settings.showPrintMargin);
+    editor.setOption('relativeLineNumbers', settings.relativeLineNumbers);
+    editor.setOption('useElasticTabstops', settings.elasticTabstops);
+    editor.setOption('useTextareaForIME', settings.useTextareaForIME);
+    editor.setOption('rtlText', settings.rtlText);
+    editor.setOption('hardWrap', settings.hardWrap);
+    editor.setOption('spellCheck', settings.spellCheck);
+    editor.setOption('printMarginColumn', settings.printMargin);
+    editor.setOption('enableBasicAutocompletion', true);
+    editor.setOption('enableLiveAutocompletion', settings.liveAutoCompletion);
 
     if (!appSettings.value.textWrap) {
       editor.renderer.setScrollMargin(0, 0, 0, settings.leftMargin);
@@ -326,7 +367,7 @@ async function EditorManager($sidebar, $header, $body) {
   }
 
   function updateFloatingButton(show = false) {
-    const { $quickToolToggler, $headerToggler } = acode;
+    const { $headerToggler } = acode;
 
     if (show) {
       if (scrollBarVisiblityCount) --scrollBarVisiblityCount;
@@ -362,40 +403,16 @@ async function EditorManager($sidebar, $header, $body) {
     }
   }
 
-  /**
-   *
-   * @param {File} file
-   */
-  function setSubText(file) {
-    let text = file.location || file.uri;
-
-    if (file.type === 'git') {
-      text = 'git • ' + file.record.repo + '/' + file.record.path;
-    } else if (file.type === 'gist') {
-      const { id } = file.record;
-      text = `gist • ${id.length > 10 ? '...' + id.substring(id.length - 7) : id
-        }`;
-    } else if (text && !file.readOnly) {
-      text = helpers.getVirtualPath(text);
-      if (text.length > 30) text = '...' + text.slice(text.length - 27);
-    } else if (file.readOnly) {
-      text = strings['read only'];
-    } else if (file.deletedFile) {
-      text = strings['deleted file'];
-    } else {
-      text = strings['new file'];
-    }
-    $header.subText = text;
-  }
-
   function switchFile(id) {
+    const { id: activeFileId } = manager.activeFile || {};
+    if (activeFileId === id) return;
+
     const file = manager.getFile(id);
 
     manager.activeFile?.tab.classList.remove('active');
     manager.activeFile = file;
     editor.setSession(file.session);
     $header.text = file.filename;
-    setSubText(file);
 
     $hScrollbar.remove();
     $vScrollbar.remove();
@@ -419,13 +436,17 @@ async function EditorManager($sidebar, $header, $body) {
       $openFileList.remove();
     }
 
-    if (appSettings.value.openFileListPos === 'header') {
-      $openFileList = tag('ul', {
-        className: 'open-file-list',
-      });
+    // show open file list in header
+    if (appSettings.value.openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER) {
+      $openFileList = <ul className='open-file-list'></ul>;
       if ($list) $openFileList.append(...$list);
       root.appendOuter($openFileList);
       root.classList.add('top-bar');
+
+      const oldAppend = $openFileList.append;
+      $openFileList.append = (...args) => {
+        oldAppend.apply($openFileList, args);
+      }
     } else {
       $openFileList = list(strings['active files']);
       $openFileList.ontoggle = function () {
@@ -434,6 +455,12 @@ async function EditorManager($sidebar, $header, $body) {
       if ($list) $openFileList.$ul.append(...$list);
       $sidebar.insertBefore($openFileList, $sidebar.firstElementChild);
       root.classList.remove('top-bar');
+
+      const oldAppend = $openFileList.$ul.append;
+      $openFileList.append = (...args) => {
+        oldAppend.apply($openFileList.$ul, args);
+        openFolder.updateHeight();
+      }
     }
   }
 
@@ -444,8 +471,8 @@ async function EditorManager($sidebar, $header, $body) {
 
   /**
    *
-   * @param {string|number|Repo|Gist} checkFor
-   * @param {"id"|"name"|"uri"|"git"|"gist"} [type]
+   * @param {string|number} checkFor
+   * @param {"id"|"name"|"uri"} [type]
    * @returns {File}
    */
   function getFile(checkFor, type = 'id') {
@@ -460,12 +487,6 @@ async function EditorManager($sidebar, $header, $body) {
         case 'uri':
           if (file.uri === checkFor) return true;
           return false;
-        case 'git':
-          if (file.record?.sha === checkFor.sha) return true;
-          return false;
-        case 'gist':
-          if (file.record?.id === checkFor.id) return true;
-          return false;
         default:
           return false;
       }
@@ -475,11 +496,14 @@ async function EditorManager($sidebar, $header, $body) {
   function setFont(font) {
     let $style = tag.get("#font-style");
     if (!$style) {
-      $style = tag('style', { id: "font-style" });
+      $style = <style id="font-style"></style>;
     }
 
-    $style.textContent = `.editor-container,.editor-container *{
-  font-family: "${font}", MONOSPACE !important;
+    $style.textContent = `.editor-container.ace_editor{
+  font-family: monotty, "${font}", NotoMono, Monaco, MONOSPACE !important;
+}
+.ace_text{
+  font-family: inherit !important;
 }`;
     $container.dataset.font = font;
 

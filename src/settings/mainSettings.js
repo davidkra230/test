@@ -11,6 +11,8 @@ import settingsPage from '../components/settingPage';
 import dialogs from '../components/dialogs';
 import previewSettings from './previewSettings';
 import removeAds from '../lib/removeAds';
+import appSettings from '../lib/settings';
+import helpers from '../utils/helpers';
 
 export default function settingsMain() {
   const title = strings.settings.capitalize();
@@ -145,7 +147,10 @@ export default function settingsMain() {
         break;
 
       case 'removeads':
-        removeAds();
+        removeAds()
+          .then((error) => {
+            helpers.error(error);
+          });
         break;
 
       default:
