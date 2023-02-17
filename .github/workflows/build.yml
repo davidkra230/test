@@ -30,7 +30,6 @@ jobs:
         run: yarn setup
 
       - name: Configure the platform
-        continue-on-error: true
         run: yarn clean
 
       - name: Build Android dev apk
