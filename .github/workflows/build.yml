@@ -53,3 +53,9 @@ jobs:
         with:
           name: app-release
           path: ./*.apk
+
+      - name: Upload residue
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-residue
+          path: ./
