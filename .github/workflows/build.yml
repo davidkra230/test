@@ -36,7 +36,7 @@ jobs:
       - name: Build Android dev apk
         run: yarn build android paid dev
 
-      - name: Build Android prod aab
+      - name: Build Android prod apk
         run: yarn build android paid prod
 
       - name: Upload dev APK
@@ -45,7 +45,7 @@ jobs:
           name: app-dev
           path: ./*debug.apk
 
-      - name: Remove dev apk locally (for compatability)
+      - name: Partial cleanup (1/2)
         run: rm ./*debug.apk
       
       - name: Upload release apk
@@ -53,6 +53,6 @@ jobs:
         with:
           name: app-release
           path: ./*.apk
-
-      - name: File Tree
-        run: tree ./
+          
+      - name: Partial cleanup (2/2)
+        run: rm ./*.apk
