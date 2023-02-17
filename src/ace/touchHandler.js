@@ -3,6 +3,7 @@ import dialogs from "../components/dialogs";
 import constants from "../lib/constants";
 import selectionMenu from "../lib/selectionMenu";
 import helpers from "../utils/helpers";
+import appSettings from '../lib/settings';
 
 /**
  * Handler for touch events
@@ -163,7 +164,11 @@ export default function addTouchListeners(editor) {
       return;
     }
 
-    if ($gutter.contains($target)) {
+    if (
+      $gutter.contains($target)
+      || $target.classList.contains('ace_fold')
+      || $target.classList.contains('ace_inline_button')
+    ) {
       return;
     }
 
@@ -214,8 +219,10 @@ export default function addTouchListeners(editor) {
     lastX = clientX;
     lastY = clientY;
 
-    const threshold = Math.round((1 / devicePixelRatio) * 10) / 10;
-    if (appSettings.value.textWrap || Math.abs(moveX) < threshold) {
+    const threshold = appSettings.value.touchMoveThreshold;
+    const touchMoved = Math.abs(moveX) < threshold;
+
+    if (appSettings.value.textWrap || touchMoved) {
       moveX = 0;
     }
 
@@ -313,11 +320,16 @@ export default function addTouchListeners(editor) {
 
   function isIn($el, cX, cY) {
     const {
-      x: sx,
-      y: sy,
+      x,
+      y,
+      left,
+      top,
       width: sWidth,
       height: sHeight,
     } = $el.getBoundingClientRect();
+
+    const sx = x || left;
+    const sy = y || top;
 
     return (cX > sx && cX < sx + sWidth
       && cY > sy && cY < sy + sHeight)
@@ -757,6 +769,7 @@ export default function addTouchListeners(editor) {
     if (teardropDoesShowMenu) {
       showMenu($activeTeardrop);
     }
+    editor.focus();
   }
 
   function onscroll() {
@@ -819,6 +832,7 @@ export default function addTouchListeners(editor) {
     selectionMenu().forEach((item) => {
       if (mode === 'read-only' && !item.readOnly) return;
       if (copyText && !['selected', 'all'].includes(item.mode)) return;
+      if (!copyText && item.mode === 'selected') return;
 
       items.push(item);
     });

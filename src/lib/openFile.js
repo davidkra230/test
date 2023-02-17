@@ -3,6 +3,7 @@ import dialogs from '../components/dialogs';
 import recents from './recents';
 import fsOperation from '../fileSystem/fsOperation';
 import EditorFile from './editorFile';
+import appSettings from './settings';
 
 /**
  *
@@ -65,9 +66,13 @@ export default async function openFile(file, data = {}) {
     const fileContent = helpers.decodeText(binData);
 
     if (helpers.isBinary(fileContent)) {
-      const blob = new Blob([binData]);
       if (/image/i.test(fileInfo.type)) {
+        const blob = new Blob([binData], { type: fileInfo.type });
         dialogs.box(name, `<img src='${URL.createObjectURL(blob)}'>`);
+        return;
+      }else if(/video/i.test(fileInfo.type)) {
+        const blob = new Blob([binData], { type: fileInfo.type });
+        dialogs.box(name, `<video src='${URL.createObjectURL(blob)}' controls></video>`);
         return;
       }
 

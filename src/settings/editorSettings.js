@@ -1,6 +1,7 @@
 import constants from '../lib/constants';
 import scrollSettings from './scrollSettings';
 import settingsPage from '../components/settingPage';
+import appSettings from '../lib/settings';
 
 export default function editorSettings() {
   const title = strings['editor settings'];
@@ -83,13 +84,14 @@ export default function editorSettings() {
       select: [
         'Fira Code',
         'Roboto Mono',
-        'Source Code'
+        'Source Code',
+        'Cascadia Code',
+        'Proggy Clean',
+        'VictorMono Italic',
+        'VictorMono Medium',
+        'JetBrains Mono Bold',
+        'JetBrains Mono Regular'
       ],
-    },
-    {
-      key: 'fullscreen',
-      text: strings.fullscreen.capitalize(),
-      checkbox: values.fullscreen,
     },
     {
       key: 'liveAutoCompletion',
@@ -102,29 +104,56 @@ export default function editorSettings() {
       checkbox: values.showPrintMargin,
     },
     {
+      key: 'printMargin',
+      text: strings['print margin'],
+      value: values.printMargin,
+      prompt: strings['print margin'],
+      promptType: 'number',
+      promptOptions: {
+        test(value) {
+          value = parseInt(value);
+          return value >= 10 && value <= 200;
+        }
+      },
+    },
+    {
       key: 'teardropSize',
       text: strings['cursor controller size'],
       value: values.teardropSize,
-      valueText: (value) => {
-        switch (value) {
-          case 0:
-            return strings.none;
-
-          case 30:
-            return strings.small;
-
-          case 60:
-            return strings.large;
-
-          default:
-            break;
-        }
+      valueText(value) {
+        return this.select.find(([v]) => v == value)[1];
       },
       select: [
         [0, strings.none],
-        [30, strings.small],
+        [20, strings.small],
+        [30, strings.medium],
         [60, strings.large],
       ],
+    },
+    {
+      key: 'relativeLineNumbers',
+      text: strings['relative line numbers'],
+      checkbox: values.relativeLineNumbers,
+    },
+    {
+      key: 'elasticTabstops',
+      text: strings['elastic tabstops'],
+      checkbox: values.elasticTabstops,
+    },
+    {
+      key: 'rtlText',
+      text: strings['line based rtl switching'],
+      checkbox: values.rtlText,
+    },
+    {
+      key: 'hardWrap',
+      text: strings['hard wrap'],
+      checkbox: values.hardWrap,
+    },
+    {
+      key: 'useTextareaForIME',
+      text: strings['use textarea for ime'],
+      checkbox: values.useTextareaForIME,
     },
     {
       index: 0,
@@ -133,15 +162,19 @@ export default function editorSettings() {
     }
   ];
 
+  items.forEach((item) => {
+    Object.defineProperty(item, 'info', {
+      get() {
+        return strings[`info-${this.key.toLocaleLowerCase()}`];
+      }
+    })
+  });
+
   function callback(key, value) {
     switch (key) {
       case 'scroll-settings':
         scrollSettings();
         break;
-
-      case 'fullscreen':
-        if (value) acode.exec('enable-fullscreen');
-        else acode.exec('disable-fullscreen');
 
       default:
         appSettings.update({
