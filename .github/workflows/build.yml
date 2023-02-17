@@ -43,10 +43,13 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: app-dev
-          path: ./*.apk
+          path: ./*debug.apk
 
-      - name: Upload release bundle
+      - name: Remove dev apk locally (for compatability)
+        run: rm ./*debug.apk
+      
+      - name: Upload release apk
         uses: actions/upload-artifact@v3
         with:
           name: app-release
-          path: ./*.aab
+          path: ./*.apk
