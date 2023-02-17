@@ -7,7 +7,7 @@ const exec = promisify(require('child_process').exec);
   const platformsDir = path.resolve(__dirname, '../platforms/');
   const configpath = path.resolve(__dirname, '../config.xml');
   const APK_PATH = platformsDir + "/android/app/build/outputs/apk/debug/app-debug.apk";
-  const AAB_PATH = platformsDir + "/android/app/build/outputs/bundle/release/app-release.aab";
+  const AAB_PATH = platformsDir + "/android/app/build/outputs/apk/release/app-release.apk";
   const ID_PAID = 'com.foxdebug.acode';
   const ID_FREE = 'com.foxdebug.acodefree';
   const CONFIG_VERSION = /<widget.* version="([1-9.]+)"/;
@@ -28,7 +28,7 @@ const exec = promisify(require('child_process').exec);
     } else if (arg[0] === 'p') {
       build = '';
       artifact = AAB_PATH;
-      ext = '.aab';
+      ext = '.apk';
     }
 
     if (arg2 === 'free') {
